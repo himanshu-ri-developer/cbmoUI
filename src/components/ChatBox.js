@@ -5,12 +5,16 @@ const ChatBox = () => {
   const [messages, setMessages] = useState([{ text: "Hello", from: "system" }]);
   const [input, setInput] = useState("");
   const [mode, setMode] = useState("text-generation");
+  const [loading, setLoading] = useState(false);
+  const [progress, setProgress] = useState(0);
 
   const handleSend = async () => {
     if (input.trim() === "") return;
 
     const userMessage = { text: input, from: "user" };
     setMessages([...messages, userMessage]);
+    setInput(""); // Clear input immediately after sending the message
+    setLoading(true);
 
     try {
       if (mode === "text-generation") {
@@ -18,16 +22,27 @@ const ChatBox = () => {
           message: input,
         });
 
+        const formattedText = formatText(response.data.choices[0].message.content);
         const systemResponse = {
-          text: response.data.choices[0].message.content,
+          text: formattedText,
           from: "system",
         };
 
         setMessages((prevMessages) => [...prevMessages, systemResponse]);
       } else if (mode === "image-generation") {
+        const interval = setInterval(() => {
+          setProgress((oldProgress) => {
+            if (oldProgress === 100) {
+              clearInterval(interval);
+              return 100;
+            }
+            return Math.min(oldProgress + Math.random() * 10, 100);
+          });
+        }, 500);
+
         const response = await axios.post('http://localhost:5000/api/generate-image', {
           prompt: input,
-        }, { responseType: 'blob' }); // Important to specify response type as blob for binary data
+        }, { responseType: 'blob' });
 
         const imageUrl = URL.createObjectURL(new Blob([response.data], { type: 'image/png' }));
 
@@ -37,6 +52,8 @@ const ChatBox = () => {
         };
 
         setMessages((prevMessages) => [...prevMessages, systemResponse]);
+        clearInterval(interval);
+        setProgress(0);
       }
     } catch (error) {
       console.error("Error fetching API response:", error);
@@ -45,9 +62,14 @@ const ChatBox = () => {
         from: "system",
       };
       setMessages((prevMessages) => [...prevMessages, errorMessage]);
+    } finally {
+      setLoading(false);
     }
+  };
 
-    setInput("");
+  const formatText = (text) => {
+    // Simple text formatting: converting **bold** to <b>bold</b>, \n to <br>
+    return text.replace(/\*\*(.*?)\*\*/g, "<b>$1</b>").replace(/\n/g, "<br>");
   };
 
   const handleKeyPress = (e) => {
@@ -86,7 +108,7 @@ const ChatBox = () => {
       <div className="messages">
         {messages.map((msg, index) => (
           <div key={index} className={`message ${msg.from}`}>
-            {msg.text && msg.text}
+            {msg.text && <div dangerouslySetInnerHTML={{ __html: msg.text }} />}
             {msg.image && (
               <div className="image-message">
                 <img src={msg.image} alt="Generated" className="generated-image" />
@@ -97,6 +119,20 @@ const ChatBox = () => {
             )}
           </div>
         ))}
+        {loading && (
+          <div className="loader">
+            {mode === "image-generation" ? (
+              <div>
+                <p>Generating Image... {Math.round(progress)}%</p>
+                <div className="progress-bar">
+                  <div className="progress" style={{ width: `${progress}%` }}></div>
+                </div>
+              </div>
+            ) : (
+              <div className="spinner"></div>
+            )}
+          </div>
+        )}
       </div>
       <div className="input-box">
         <input
@@ -106,7 +142,7 @@ const ChatBox = () => {
           onKeyPress={handleKeyPress}
           placeholder="Type a message..."
         />
-        <button onClick={handleSend}>Send</button>
+        <button onClick={handleSend} disabled={loading}>Send</button>
       </div>
     </div>
   );
