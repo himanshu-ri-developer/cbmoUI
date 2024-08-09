@@ -13,7 +13,7 @@ const ChatBox = () => {
 
     const userMessage = { text: input, from: "user" };
     setMessages([...messages, userMessage]);
-    setInput(""); // Clear input immediately after sending the message
+    setInput(""); 
     setLoading(true);
 
     try {
@@ -68,8 +68,9 @@ const ChatBox = () => {
   };
 
   const formatText = (text) => {
-    // Simple text formatting: converting **bold** to <b>bold</b>, \n to <br>
-    return text.replace(/\*\*(.*?)\*\*/g, "<b>$1</b>").replace(/\n/g, "<br>");
+    let formattedText = text.replace(/###/g, "•");
+    formattedText = formattedText.replace(/\*\*(.*?)\*\*/g, "<b>$1</b>").replace(/\n/g, "<br>");
+    return formattedText;
   };
 
   const handleKeyPress = (e) => {
@@ -108,7 +109,7 @@ const ChatBox = () => {
       <div className="messages">
         {messages.map((msg, index) => (
           <div key={index} className={`message ${msg.from}`}>
-            {msg.text && <div dangerouslySetInnerHTML={{ __html: msg.text }} />}
+            {msg.text && <div dangerouslySetInnerHTML={{ __html: msg.text }} className="formatted-text" />}
             {msg.image && (
               <div className="image-message">
                 <img src={msg.image} alt="Generated" className="generated-image" />
