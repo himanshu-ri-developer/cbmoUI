@@ -4,6 +4,7 @@ import axios from 'axios';
 const ChatBox = () => {
   const [messages, setMessages] = useState([{ text: "Hello", from: "system" }]);
   const [input, setInput] = useState("");
+  const [mode, setMode] = useState("text-generation");
 
   const handleSend = async () => {
     if (input.trim() === "") return;
@@ -12,16 +13,31 @@ const ChatBox = () => {
     setMessages([...messages, userMessage]);
 
     try {
-      const response = await axios.post('http://localhost:5000/api/chat/completions', {
-        message: input,
-      });
+      if (mode === "text-generation") {
+        const response = await axios.post('http://localhost:5000/api/chat/completions', {
+          message: input,
+        });
 
-      const systemResponse = {
-        text: response.data.choices[0].message.content,
-        from: "system",
-      };
+        const systemResponse = {
+          text: response.data.choices[0].message.content,
+          from: "system",
+        };
 
-      setMessages((prevMessages) => [...prevMessages, systemResponse]);
+        setMessages((prevMessages) => [...prevMessages, systemResponse]);
+      } else if (mode === "image-generation") {
+        const response = await axios.post('http://localhost:5000/api/generate-image', {
+          prompt: input,
+        }, { responseType: 'blob' }); // Important to specify response type as blob for binary data
+
+        const imageUrl = URL.createObjectURL(new Blob([response.data], { type: 'image/png' }));
+
+        const systemResponse = {
+          image: imageUrl,
+          from: "system",
+        };
+
+        setMessages((prevMessages) => [...prevMessages, systemResponse]);
+      }
     } catch (error) {
       console.error("Error fetching API response:", error);
       const errorMessage = {
@@ -40,12 +56,45 @@ const ChatBox = () => {
     }
   };
 
+  const handleModeChange = (e) => {
+    setMode(e.target.value);
+  };
+
   return (
     <div className="chatbox">
+      <div className="mode-selection">
+        <h3>Please select the mode:</h3>
+        <label>
+          <input
+            type="radio"
+            value="text-generation"
+            checked={mode === "text-generation"}
+            onChange={handleModeChange}
+          />
+          Text Generation
+        </label>
+        <label>
+          <input
+            type="radio"
+            value="image-generation"
+            checked={mode === "image-generation"}
+            onChange={handleModeChange}
+          />
+          Image Generation
+        </label>
+      </div>
       <div className="messages">
         {messages.map((msg, index) => (
           <div key={index} className={`message ${msg.from}`}>
-            {msg.text}
+            {msg.text && msg.text}
+            {msg.image && (
+              <div className="image-message">
+                <img src={msg.image} alt="Generated" className="generated-image" />
+                <a href={msg.image} download="generated-image.png">
+                  <button className="download-button">Download</button>
+                </a>
+              </div>
+            )}
           </div>
         ))}
       </div>

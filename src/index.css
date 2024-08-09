@@ -53,6 +53,37 @@ body {
   border-radius: 10px;
   padding: 20px;
   box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+  position: relative; /* To position the mode selection absolutely within */
+}
+
+.mode-selection {
+  display: flex;
+  align-items: center;
+  position: absolute; /* Position the container absolutely */
+  top: 20px; /* Adjust the distance from the top */
+  right: 20px; /* Adjust the distance from the right, change to left: 20px for left corner */
+  background-color: #343541; /* Match the background color */
+  padding: 10px;
+  border-radius: 8px;
+}
+
+.mode-selection h3 {
+  margin: 0;
+  font-size: 14px;
+  color: #d1d5db;
+  margin-right: 10px; /* Space between heading and radio buttons */
+}
+
+.mode-selection label {
+  margin-right: 10px;
+  font-size: 14px;
+  color: #d1d5db;
+  display: flex;
+  align-items: center;
+}
+
+.mode-selection input {
+  margin-right: 5px;
 }
 
 .messages {
@@ -116,5 +147,32 @@ body {
 }
 
 .input-box button:hover {
+  background-color: #0e8a6d;
+}
+
+.image-message {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.generated-image {
+  width: 3in;
+  height: 3in;
+  border-radius: 5px;
+  margin-top: 10px;
+}
+
+.download-button {
+  margin-top: 10px;
+  padding: 5px 10px;
+  background-color: #10a37f;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.download-button:hover {
   background-color: #0e8a6d;
 }
