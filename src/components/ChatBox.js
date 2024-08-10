@@ -7,13 +7,16 @@ const ChatBox = () => {
   const [mode, setMode] = useState("text-generation");
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [aspectRatio, setAspectRatio] = useState("9:16");
+  const [outputFormat, setOutputFormat] = useState("webp");
+  const [numOutputs, setNumOutputs] = useState(1);
 
   const handleSend = async () => {
     if (input.trim() === "") return;
 
     const userMessage = { text: input, from: "user" };
     setMessages([...messages, userMessage]);
-    setInput(""); 
+    setInput("");
     setLoading(true);
 
     try {
@@ -52,6 +55,37 @@ const ChatBox = () => {
         };
 
         setMessages((prevMessages) => [...prevMessages, systemResponse]);
+        clearInterval(interval);
+        setProgress(0);
+      } else if (mode === "flux-image-generation") {
+        const interval = setInterval(() => {
+          setProgress((oldProgress) => {
+            if (oldProgress === 100) {
+              clearInterval(interval);
+              return 100;
+            }
+            return Math.min(oldProgress + Math.random() * 10, 100);
+          });
+        }, 500);
+
+        const response = await axios.post('http://localhost:5000/flux-image-generation', {
+          prompt: input,
+          num_outputs: numOutputs,
+          aspect_ratio: aspectRatio,
+          output_format: outputFormat,
+          output_quality: 90
+        }, { responseType: 'blob' });
+
+        const images = [];
+        for (let i = 0; i < numOutputs; i++) {
+          const imageUrl = URL.createObjectURL(new Blob([response.data], { type: `image/${outputFormat}` }));
+          images.push({
+            image: imageUrl,
+            from: "system",
+          });
+        }
+
+        setMessages((prevMessages) => [...prevMessages, ...images]);
         clearInterval(interval);
         setProgress(0);
       }
@@ -103,9 +137,48 @@ const ChatBox = () => {
             checked={mode === "image-generation"}
             onChange={handleModeChange}
           />
-          Image Generation
+          DallE-3 Image Generation
+        </label>
+        <label>
+          <input
+            type="radio"
+            value="flux-image-generation"
+            checked={mode === "flux-image-generation"}
+            onChange={handleModeChange}
+          />
+          Image Generation with Flux
         </label>
       </div>
+      {mode === "flux-image-generation" && (
+        <div className="flux-options">
+          <label>
+            Aspect Ratio:
+            <select value={aspectRatio} onChange={(e) => setAspectRatio(e.target.value)}>
+              {["1:1", "16:9", "21:9", "2:3", "3:2", "4:5", "5:4", "9:16", "9:21"].map((ratio) => (
+                <option key={ratio} value={ratio}>{ratio}</option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Output Format:
+            <select value={outputFormat} onChange={(e) => setOutputFormat(e.target.value)}>
+              {["webp", "jpg", "png"].map((format) => (
+                <option key={format} value={format}>{format}</option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Number of Outputs:
+            <input
+              type="number"
+              value={numOutputs}
+              onChange={(e) => setNumOutputs(e.target.value)}
+              min="1"
+              max="10"
+            />
+          </label>
+        </div>
+      )}
       <div className="messages">
         {messages.map((msg, index) => (
           <div key={index} className={`message ${msg.from}`}>
@@ -113,7 +186,7 @@ const ChatBox = () => {
             {msg.image && (
               <div className="image-message">
                 <img src={msg.image} alt="Generated" className="generated-image" />
-                <a href={msg.image} download="generated-image.png">
+                <a href={msg.image} download={`generated-image.${outputFormat}`}>
                   <button className="download-button">Download</button>
                 </a>
               </div>
@@ -122,7 +195,7 @@ const ChatBox = () => {
         ))}
         {loading && (
           <div className="loader">
-            {mode === "image-generation" ? (
+            {mode === "image-generation" || mode === "flux-image-generation" ? (
               <div>
                 <p>Generating Image... {Math.round(progress)}%</p>
                 <div className="progress-bar">
