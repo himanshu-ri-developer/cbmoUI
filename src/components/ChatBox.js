@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import axios from 'axios';
+import JSZip from 'jszip'; // Import JSZip for handling ZIP files
 
 const ChatBox = () => {
   const [messages, setMessages] = useState([{ text: "Hello", from: "system" }]);
@@ -70,14 +71,26 @@ const ChatBox = () => {
 
         const response = await axios.post('http://localhost:5000/flux-image-generation', {
           prompt: input,
-          num_outputs: numOutputs,
+          num_outputs: parseInt(numOutputs, 10), // Ensure num_outputs is an integer
           aspect_ratio: aspectRatio,
           output_format: outputFormat,
           output_quality: 90
         }, { responseType: 'blob' });
 
         const images = [];
-        for (let i = 0; i < numOutputs; i++) {
+        if (numOutputs > 1) {
+          const zip = await JSZip.loadAsync(response.data);
+          const files = Object.keys(zip.files);
+          for (let i = 0; i < files.length; i++) {
+            const file = zip.files[files[i]];
+            const blob = await file.async('blob');
+            const imageUrl = URL.createObjectURL(blob);
+            images.push({
+              image: imageUrl,
+              from: "system",
+            });
+          }
+        } else {
           const imageUrl = URL.createObjectURL(new Blob([response.data], { type: `image/${outputFormat}` }));
           images.push({
             image: imageUrl,
@@ -172,7 +185,7 @@ const ChatBox = () => {
             <input
               type="number"
               value={numOutputs}
-              onChange={(e) => setNumOutputs(e.target.value)}
+              onChange={(e) => setNumOutputs(parseInt(e.target.value, 10))} // Ensure numOutputs is an integer
               min="1"
               max="10"
             />
